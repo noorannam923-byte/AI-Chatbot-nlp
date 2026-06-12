@@ -4,7 +4,8 @@
 > Matches user questions to the best answer using **TF-IDF vectorization** and **cosine similarity**.
 
 ---
-<img width="658" height="502" alt="{04201125-5CBF-408A-98D3-CC9B2D1F33D6}" src="https://github.com/user-attachments/assets/388b830b-665c-4bbc-bb4d-f98875072f1c" />
+<img width="601" height="507" alt="{438609BB-F85C-4E12-92D2-DF41FB6295B0}" src="https://github.com/user-attachments/assets/88b08584-c26e-464d-97dc-defd9cd3e3d6" />
+
 
 ## 📸 Preview
 
