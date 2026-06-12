@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FAQ Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <div class="app-wrapper">
+
+    <!-- ── Sidebar ─────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="bot-avatar large">🤖</div>
+        <h2>FAQ Assistant</h2>
+        <p>Ask me anything about our services</p>
+      </div>
+
+      <div class="faq-list-section">
+        <h3>Common Questions</h3>
+        <ul class="faq-list" id="faqList">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
+    </aside>
+
+    <!-- ── Chat Panel ──────────────────────────────────────── -->
+    <main class="chat-panel">
+
+      <header class="chat-header">
+        <div class="header-left">
+          <div class="bot-avatar small">🤖</div>
+          <div>
+            <span class="bot-name">FAQ Assistant</span>
+            <span class="status-dot"></span>
+            <span class="status-text">Online</span>
+          </div>
+        </div>
+        <button class="clear-btn" onclick="clearChat()">Clear Chat</button>
+      </header>
+
+      <div class="chat-messages" id="chatMessages">
+        <!-- Welcome message -->
+        <div class="message bot-message">
+          <div class="bubble">
+            👋 Hello! I'm your FAQ Assistant. Ask me any question or click one from the sidebar. I'll find the best matching answer for you!
+          </div>
+          <span class="timestamp" id="welcomeTime"></span>
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typingIndicator" style="display:none;">
+        <span></span><span></span><span></span>
+        <small>Assistant is thinking...</small>
+      </div>
+
+      <div class="chat-input-area">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="Type your question here..."
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') sendMessage()"
+        />
+        <button class="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // ── Set welcome timestamp ──────────────────────────────────
+    document.getElementById("welcomeTime").textContent = getTime();
+
+    // ── Load FAQ list into sidebar ────────────────────────────
+    fetch("/faqs")
+      .then(r => r.json())
+      .then(questions => {
+        const list = document.getElementById("faqList");
+        questions.forEach(q => {
+          const li = document.createElement("li");
+          li.textContent = q;
+          li.onclick = () => {
+            document.getElementById("userInput").value = q;
+            sendMessage();
+          };
+          list.appendChild(li);
+        });
+      });
+
+    // ── Get current time string ───────────────────────────────
+    function getTime() {
+      return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // ── Append a message bubble ───────────────────────────────
+    function appendMessage(text, sender, meta) {
+      const container = document.getElementById("chatMessages");
+
+      const wrapper = document.createElement("div");
+      wrapper.className = `message ${sender}-message`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      const ts = document.createElement("span");
+      ts.className = "timestamp";
+      ts.textContent = getTime();
+
+      wrapper.appendChild(bubble);
+
+      // Show confidence + matched question for bot
+      if (sender === "bot" && meta) {
+        if (meta.matched_question) {
+          const matched = document.createElement("div");
+          matched.className = "matched-tag";
+          matched.innerHTML = `✅ Matched: <em>${meta.matched_question}</em>`;
+          wrapper.appendChild(matched);
+        }
+        if (meta.confidence !== undefined) {
+          const conf = document.createElement("div");
+          conf.className = `confidence ${meta.confidence >= 50 ? "high" : meta.confidence >= 25 ? "mid" : "low"}`;
+          conf.textContent = `Confidence: ${meta.confidence}%`;
+          wrapper.appendChild(conf);
+        }
+      }
+
+      wrapper.appendChild(ts);
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // ── Send message ──────────────────────────────────────────
+    function sendMessage() {
+      const input = document.getElementById("userInput");
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, "user", null);
+      input.value = "";
+
+      // Show typing indicator
+      const typing = document.getElementById("typingIndicator");
+      typing.style.display = "flex";
+      document.getElementById("chatMessages").scrollTop = 99999;
+
+      fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      })
+        .then(r => r.json())
+        .then(data => {
+          typing.style.display = "none";
+          appendMessage(data.answer, "bot", {
+            matched_question: data.matched_question,
+            confidence: data.confidence
+          });
+        })
+        .catch(() => {
+          typing.style.display = "none";
+          appendMessage("Sorry, something went wrong. Please try again.", "bot", null);
+        });
+    }
+
+    // ── Clear chat ────────────────────────────────────────────
+    function clearChat() {
+      const container = document.getElementById("chatMessages");
+      container.innerHTML = "";
+      appendMessage("Chat cleared! Ask me a new question anytime. 😊", "bot", null);
+    }
+  </script>
+
+</body>
+</html>
